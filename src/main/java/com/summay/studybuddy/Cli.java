@@ -23,7 +23,7 @@ public class Cli {
             case "add-deck" -> addDeck(args);
             case "add-card" -> addCard(args);
             case "list" -> list();
-            case "review" -> review();
+            case "review" -> review(args);
             default -> printHelp();
         }
     }
@@ -34,7 +34,7 @@ public class Cli {
         System.out.println("  add-deck <name>");
         System.out.println("  add-card <deck> <front> <back>");
         System.out.println("  list");
-        System.out.println("  review");
+        System.out.println("  review [deck]");
     }
 
     private void addDeck(String[] args) throws Exception {
@@ -79,11 +79,26 @@ public class Cli {
         }
     }
 
-    private void review() throws Exception {
+    private void review(String[] args) throws Exception {
         Decks decks = storage.load();
-        List<Flashcard> session = scheduler.todaysQueue(decks);
+        List<Flashcard> session = new ArrayList<>();
+        if (args.length >= 2) {
+            String deckName = args[1];
+            Deck d = decks.getDeck(deckName);
+            if (d == null) {
+                System.err.println("Deck not found: " + deckName);
+                return;
+            }
+            for (Flashcard c : d.cards) {
+                if (!c.dueDate().isAfter(java.time.LocalDate.now())) session.add(c);
+            }
+            System.out.println("Reviewing deck: " + deckName);
+        } else {
+            session = scheduler.todaysQueue(decks);
+            System.out.println("Reviewing all due cards");
+        }
         if (session.isEmpty()) {
-            System.out.println("No cards due today. 🎉");
+            System.out.println("No cards due. 🎉");
             return;
         }
         try (Scanner sc = new Scanner(System.in)) {
